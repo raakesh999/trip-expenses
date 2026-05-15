@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Girls - Hyderabad to Kerla - Trip</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Trip Expenses">
+  <link rel="apple-touch-icon" href="app_icon_192.png">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+      background: #FFC0CB;
+      color: black;
+    }
+    .header {
+      text-align: center;
+      background: white;
+      padding: 20px;
+      border-top-left-radius: 200px;
+      border-top-right-radius: 200px;
+      margin-bottom: 20px;
+    }
+    .form-container {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .actions {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .actions button {
+      width: auto;
+      margin: 5px;
+      background: black;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Girls - Hyderabad to Kerla - Trip</h2>
+      </div>
+
+  <div class="form-container">
+    <form id="expenseForm" onsubmit="event.preventDefault(); addExpense();">
+      <label for="name">Name:</label>
+      <select id="name">
+        <option value="">--Select--</option>
+        <option>Radhika</option>
+        <option>Nivee</option>
+        <option>Mounika</option>
+        <option>Sapna</option>
+        <option>Prasanna</option>
+        <option>Teju</option>
+      </select>
+
+      <label for="date">Date:</label>
+      <input type="date" id="date">
+
+      <label for="amount">Amount:</label>
+      <input type="number" id="amount" placeholder="Enter amount">
+
+      <label for="comments">Comments:</label>
+      <textarea id="comments" placeholder="Enter comments"></textarea>
+
+      <div class="actions">
+        <button type="submit">Submit</button>
+        <button type="button" onclick="resetForm()">Reset</button>
+      </div>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Sl No</th>
+        <th>Spent by</th>
+        <th>Date</th>
+        <th>Amount</th>
+        <th>Comments</th>
+        <th>Erase</th>
+      </tr>
+    </thead>
+    <tbody id="expenseBody"></tbody>
+  </table>
+
+  <h3>Summary Table</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Total Spent</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+
+  <div class="actions">
+    <button onclick="exportToExcel()">Export to Excel</button>
+    <button onclick="shareToWhatsApp()">Share to WhatsApp</button>
+  </div>
+
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js');
+      });
+    }
+
+    let serialNo = 1;
+    let expenses = [];
+
+    // Load data when the page loads
+    window.onload = function() {
+        const savedExpenses = localStorage.getItem('tripExpenses');
+        if (savedExpenses) {
+            expenses = JSON.parse(savedExpenses);
+            renderTable();
+            updateSummary();
+            // Update serialNo based on existing expenses
+            if (expenses.length > 0) {
+                serialNo = Math.max(...expenses.map(e => e.serial)) + 1;
+            }
+        }
+    };
+
+    function saveData() {
+        localStorage.setItem('tripExpenses', JSON.stringify(expenses));
+    }
+
+    function renderTable() {
+        const table = document.getElementById("expenseBody");
+        table.innerHTML = "";
+        expenses.forEach((exp, index) => {
+            const row = table.insertRow();
+            row.insertCell(0).innerText = exp.serial;
+            row.insertCell(1).innerText = exp.name;
+            row.insertCell(2).innerText = exp.date;
+            row.insertCell(3).innerText = exp.amount;
+            row.insertCell(4).innerText = exp.comments;
+
+            const eraseCell = row.insertCell(5);
+            const eraseBtn = document.createElement("button");
+            eraseBtn.innerText = "Erase";
+            eraseBtn.onclick = function () {
+                expenses.splice(index, 1);
+                saveData();
+                renderTable();
+                updateSummary();
+            };
+            eraseCell.appendChild(eraseBtn);
+        });
+    }
+
+    function getDateValue() {
+      const dateInput = document.getElementById("date").value;
+      if (!dateInput) return "";
+      const date = new Date(dateInput);
+      return date.toLocaleDateString();
+    }
+
+    function updateSummary() {
+      const summary = {};
+      expenses.forEach(exp => {
+        if (!summary[exp.name]) summary[exp.name] = 0;
+        summary[exp.name] += exp.amount;
+      });
+
+      const summaryTable = document.getElementById("summaryBody");
+      summaryTable.innerHTML = "";
+      for (const name in summary) {
+        const row = summaryTable.insertRow();
+        row.insertCell(0).innerText = name;
+        row.insertCell(1).innerText = summary[name];
+      }
+    }
+
+    function addExpense() {
+      const name = document.getElementById("name").value;
+      const date = getDateValue();
+      const amount = parseFloat(document.getElementById("amount").value);
+      const comments = document.getElementById("comments").value;
+
+      if (!name || !date || isNaN(amount)) {
+        alert("Please fill all required fields.");
+        return;
+      }
+
+      expenses.push({ serial: serialNo++, name, date, amount, comments });
+      saveData();
+      renderTable();
+      updateSummary();
+      resetForm();
+    }
+
+    function resetForm() {
+      document.getElementById("expenseForm").reset();
+    }
+
+    function exportToExcel() {
+      let csv = "Sl No,Name,Date,Amount,Comments\n";
+      expenses.forEach(exp => {
+        csv += `${exp.serial},${exp.name},${exp.date},${exp.amount},${exp.comments}\n`;
+      });
+
+      csv += "\nSummary Table\nName,Total Spent\n";
+      const summaryRows = document.querySelectorAll("#summaryBody tr");
+      summaryRows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+        csv += `${cells[0].innerText},${cells[1].innerText}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "expenses.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function shareToWhatsApp() {
+      let text = "📊 Expense Table:\n";
+      expenses.forEach(exp => {
+        text += `${exp.serial}. ${exp.name} | ${exp.date} | ₹${exp.amount} | ${exp.comments}\n`;
+      });
+
+      text += "\n🧾 Summary:\n";
+      const summaryRows = document.querySelectorAll("#summaryBody tr");
+      summaryRows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+        text += `${cells[0].innerText}: ₹${cells[1].innerText}\n`;
+      });
+
+      const url = "https://wa.me/?text=" + encodeURIComponent(text);
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
